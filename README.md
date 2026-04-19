@@ -1,15 +1,24 @@
-# 战斧F1手柄驱动程序
-严格意义来说并不是驱动。只是一个键位映射工具，因为战斧F1手柄有意地将手柄按照非标准的Android和Xinput手柄来设计，所以这个手柄直接用在Android或Windows上，键位是乱的。且Windows平台上不支持扳机（LT、RT）的线性。
-此工具是基于这个项目的代码修改而来的：https://github.com/irungentoo/Xiaomi_gamepad
-使用了SCP作为模拟X360的驱动。
+(Translated to English)
+# Tomahawk F1 Controller Driver
 
-# 已经实现的功能：
->暂无。待测试。
+Strictly speaking, this is not a driver. It is simply a key-mapping tool. The Tomahawk F1 controller was deliberately designed to deviate from standard Android and XInput controller layouts, which causes the button mappings to be incorrect when used directly on Android or Windows. Additionally, the Windows platform does not support linear input for the triggers (LT, RT).
 
-# 还没有实现的功能：
->所有按键的键位映射。（代码功能已完成，但尚需继续测试）
->手柄震动。
->扳机震动。
+This tool is modified from the following project:
+[https://github.com/irungentoo/Xiaomi_gamepad](https://github.com/irungentoo/Xiaomi_gamepad)
 
-# 关于手柄的具体设计细节：
-请访问：https://github.com/mumumusuc/FuzeController
+It uses SCP as a driver to emulate an Xbox 360 controller.
+
+# Implemented Features:
+
+> Bluetooth Support
+
+# Features Not Yet Implemented:
+
+> Full button mapping for all inputs (functionality is already coded but still requires further testing)
+> Controller vibration
+> Trigger vibration
+
+# About the Controller Design Details:
+
+Please refer to:
+[https://github.com/mumumusuc/FuzeController](https://github.com/mumumusuc/FuzeController)
