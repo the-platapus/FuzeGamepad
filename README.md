@@ -14,7 +14,7 @@ It uses SCP as a driver to emulate an Xbox 360 controller.
 
 # Features Not Yet Implemented:
 
-> Vibration
+> Rumble
 
 # About the Controller Design Details:
 
