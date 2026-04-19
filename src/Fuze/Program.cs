@@ -72,59 +72,49 @@ namespace Fuze
             //compatibleDevices.RemoveRange(1, compatibleDevices.Count - 1);
             foreach (var deviceInstance in compatibleDevices)
             {
-                //Console.WriteLine(deviceInstance);
                 HidDevice Device = deviceInstance;
+
+                bool opened = false;
+
                 try
                 {
-                    Device.OpenDevice(DeviceMode.Overlapped, DeviceMode.Overlapped, ShareMode.Exclusive);
+                    Device.OpenDevice(DeviceMode.Overlapped, DeviceMode.Overlapped,
+                        ShareMode.ShareRead | ShareMode.ShareWrite);
+
+                    Log.WriteLine("Opened device in shared mode.");
+                    opened = true;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    Log.WriteLine("Could not open gamepad in exclusive mode. Try re-enable device.",Log.LogType.warning);
-                    var instanceId = devicePathToInstanceId(deviceInstance.DevicePath);
-                    if (TryReEnableDevice(instanceId))
-                    {
-                        try
-                        {
-                            Device.OpenDevice(DeviceMode.Overlapped, DeviceMode.Overlapped, ShareMode.Exclusive);
-                            Log.WriteLine("Opened in exclusive mode.");
-                        }
-                        catch
-                        {
-                            Device.OpenDevice(DeviceMode.Overlapped, DeviceMode.Overlapped, ShareMode.ShareRead | ShareMode.ShareWrite);
-                            Log.WriteLine("Opened in shared mode.");
-                        }
-                    }
-                    else
-                    {
-                        Device.OpenDevice(DeviceMode.Overlapped, DeviceMode.Overlapped, ShareMode.ShareRead | ShareMode.ShareWrite);
-                        Log.WriteLine("Opened in shared mode.");
-                    }
+                    Log.WriteLine("Failed to open device: " + ex.Message, Log.LogType.warning);
+                    continue;
                 }
 
-                //byte[] Vibration = { 0x20, 0x00, 0x00 };
-                //if (Device.WriteFeatureData(Vibration) == false)
-                //{
-                //    Console.WriteLine("Could not write to gamepad (is it closed?), skipping");
-                //    Device.CloseDevice();
-                //    continue;
-                //}
+                if (!opened)
+                    continue;
 
                 byte[] serialNumber;
                 byte[] product;
+
                 Device.ReadSerialNumber(out serialNumber);
                 Device.ReadProduct(out product);
 
+                string serial = serialNumber != null
+                    ? Encoding.ASCII.GetString(serialNumber).Trim('\0')
+                    : "unknown";
+
+                string productName = product != null
+                    ? Encoding.ASCII.GetString(product).Trim('\0')
+                    : "unknown";
+
+                Log.WriteLine($"Device: {productName} | Serial: {serial}");
 
                 gamepads[index - 1] = new FuzeGamepad(Device, scpBus, index);
-                ++index;
+                index++;
 
                 if (index >= 5)
-                {
                     break;
-                }
             }
-
             Log.WriteLine(string.Format("{0} controllers connected", index - 1));
 
             while (true)
@@ -133,88 +123,88 @@ namespace Fuze
             }
         }
 
-        private static bool TryReEnableDevice(string deviceInstanceId)
-        {
-            try
-            {
-                bool success;
-                Guid hidGuid = new Guid();
-                HidLibrary.NativeMethods.HidD_GetHidGuid(ref hidGuid);
-                IntPtr deviceInfoSet = HidLibrary.NativeMethods.SetupDiGetClassDevs(ref hidGuid, deviceInstanceId, 0, HidLibrary.NativeMethods.DIGCF_PRESENT | HidLibrary.NativeMethods.DIGCF_DEVICEINTERFACE);
-                HidLibrary.NativeMethods.SP_DEVINFO_DATA deviceInfoData = new HidLibrary.NativeMethods.SP_DEVINFO_DATA();
-                deviceInfoData.cbSize = Marshal.SizeOf(deviceInfoData);
-                success = HidLibrary.NativeMethods.SetupDiEnumDeviceInfo(deviceInfoSet, 0, ref deviceInfoData);
-                if (!success)
-                {
-                    Log.WriteLine("Error getting device info data, error code = " + Marshal.GetLastWin32Error(),
-                        Log.LogType.error);
-                }
-                success = HidLibrary.NativeMethods.SetupDiEnumDeviceInfo(deviceInfoSet, 1, ref deviceInfoData); // Checks that we have a unique device
-                if (success)
-                {
-                    Log.WriteLine("Can't find unique device",Log.LogType.error);
-                }
+        //private static bool TryReEnableDevice(string deviceInstanceId)
+        //{
+        //    try
+        //    {
+        //        bool success;
+        //        Guid hidGuid = new Guid();
+        //        HidLibrary.NativeMethods.HidD_GetHidGuid(ref hidGuid);
+        //        IntPtr deviceInfoSet = HidLibrary.NativeMethods.SetupDiGetClassDevs(ref hidGuid, deviceInstanceId, 0, HidLibrary.NativeMethods.DIGCF_PRESENT | HidLibrary.NativeMethods.DIGCF_DEVICEINTERFACE);
+        //        HidLibrary.NativeMethods.SP_DEVINFO_DATA deviceInfoData = new HidLibrary.NativeMethods.SP_DEVINFO_DATA();
+        //        deviceInfoData.cbSize = Marshal.SizeOf(deviceInfoData);
+        //        success = HidLibrary.NativeMethods.SetupDiEnumDeviceInfo(deviceInfoSet, 0, ref deviceInfoData);
+        //        if (!success)
+        //        {
+        //            Log.WriteLine("Error getting device info data, error code = " + Marshal.GetLastWin32Error(),
+        //                Log.LogType.error);
+        //        }
+        //        success = HidLibrary.NativeMethods.SetupDiEnumDeviceInfo(deviceInfoSet, 1, ref deviceInfoData); // Checks that we have a unique device
+        //        if (success)
+        //        {
+        //            Log.WriteLine("Can't find unique device",Log.LogType.error);
+        //        }
 
-                HidLibrary.NativeMethods.SP_PROPCHANGE_PARAMS propChangeParams = new HidLibrary.NativeMethods.SP_PROPCHANGE_PARAMS();
-                propChangeParams.classInstallHeader.cbSize = Marshal.SizeOf(propChangeParams.classInstallHeader);
-                propChangeParams.classInstallHeader.installFunction = HidLibrary.NativeMethods.DIF_PROPERTYCHANGE;
-                propChangeParams.stateChange = HidLibrary.NativeMethods.DICS_DISABLE;
-                propChangeParams.scope = HidLibrary.NativeMethods.DICS_FLAG_GLOBAL;
-                propChangeParams.hwProfile = 0;
-                success = HidLibrary.NativeMethods.SetupDiSetClassInstallParams(deviceInfoSet, ref deviceInfoData, ref propChangeParams, Marshal.SizeOf(propChangeParams));
-                if (!success)
-                {
-                    Log.WriteLine("Error setting class install params, error code = " + Marshal.GetLastWin32Error()
-                        , Log.LogType.error);
-                    return false;
-                }
-                success = HidLibrary.NativeMethods.SetupDiCallClassInstaller(HidLibrary.NativeMethods.DIF_PROPERTYCHANGE, deviceInfoSet, ref deviceInfoData);
-                if (!success)
-                {
-                    Log.WriteLine("Error disabling device, error code = " + Marshal.GetLastWin32Error()
-                        , Log.LogType.error);
-                    return false;
+        //        HidLibrary.NativeMethods.SP_PROPCHANGE_PARAMS propChangeParams = new HidLibrary.NativeMethods.SP_PROPCHANGE_PARAMS();
+        //        propChangeParams.classInstallHeader.cbSize = Marshal.SizeOf(propChangeParams.classInstallHeader);
+        //        propChangeParams.classInstallHeader.installFunction = HidLibrary.NativeMethods.DIF_PROPERTYCHANGE;
+        //        propChangeParams.stateChange = HidLibrary.NativeMethods.DICS_DISABLE;
+        //        propChangeParams.scope = HidLibrary.NativeMethods.DICS_FLAG_GLOBAL;
+        //        propChangeParams.hwProfile = 0;
+        //        success = HidLibrary.NativeMethods.SetupDiSetClassInstallParams(deviceInfoSet, ref deviceInfoData, ref propChangeParams, Marshal.SizeOf(propChangeParams));
+        //        if (!success)
+        //        {
+        //            Log.WriteLine("Error setting class install params, error code = " + Marshal.GetLastWin32Error()
+        //                , Log.LogType.error);
+        //            return false;
+        //        }
+        //        success = HidLibrary.NativeMethods.SetupDiCallClassInstaller(HidLibrary.NativeMethods.DIF_PROPERTYCHANGE, deviceInfoSet, ref deviceInfoData);
+        //        if (!success)
+        //        {
+        //            Log.WriteLine("Error disabling device, error code = " + Marshal.GetLastWin32Error()
+        //                , Log.LogType.error);
+        //            return false;
 
-                }
-                propChangeParams.stateChange = HidLibrary.NativeMethods.DICS_ENABLE;
-                success = HidLibrary.NativeMethods.SetupDiSetClassInstallParams(deviceInfoSet, ref deviceInfoData, ref propChangeParams, Marshal.SizeOf(propChangeParams));
-                if (!success)
-                {
-                    Log.WriteLine("Error setting class install params, error code = " + Marshal.GetLastWin32Error()
-                        , Log.LogType.error);
-                    return false;
-                }
-                success = HidLibrary.NativeMethods.SetupDiCallClassInstaller(HidLibrary.NativeMethods.DIF_PROPERTYCHANGE, deviceInfoSet, ref deviceInfoData);
-                if (!success)
-                {
-                    Log.WriteLine("Error enabling device, error code = " + Marshal.GetLastWin32Error()
-                        , Log.LogType.error);
-                    return false;
-                }
+        //        }
+        //        propChangeParams.stateChange = HidLibrary.NativeMethods.DICS_ENABLE;
+        //        success = HidLibrary.NativeMethods.SetupDiSetClassInstallParams(deviceInfoSet, ref deviceInfoData, ref propChangeParams, Marshal.SizeOf(propChangeParams));
+        //        if (!success)
+        //        {
+        //            Log.WriteLine("Error setting class install params, error code = " + Marshal.GetLastWin32Error()
+        //                , Log.LogType.error);
+        //            return false;
+        //        }
+        //        success = HidLibrary.NativeMethods.SetupDiCallClassInstaller(HidLibrary.NativeMethods.DIF_PROPERTYCHANGE, deviceInfoSet, ref deviceInfoData);
+        //        if (!success)
+        //        {
+        //            Log.WriteLine("Error enabling device, error code = " + Marshal.GetLastWin32Error()
+        //                , Log.LogType.error);
+        //            return false;
+        //        }
 
-                HidLibrary.NativeMethods.SetupDiDestroyDeviceInfoList(deviceInfoSet);
+        //        HidLibrary.NativeMethods.SetupDiDestroyDeviceInfoList(deviceInfoSet);
 
-                return true;
-            }
-            catch
-            {
-                Log.WriteLine("Can't reenable device"
-                    , Log.LogType.error);
-                return false;
-            }
-        }
+        //        return true;
+        //    }
+        //    catch
+        //    {
+        //        Log.WriteLine("Can't reenable device"
+        //            , Log.LogType.error);
+        //        return false;
+        //    }
+        //}
 
-        private static string devicePathToInstanceId(string devicePath)
-        {
-            string deviceInstanceId = devicePath;
-            deviceInstanceId = deviceInstanceId.Remove(0, deviceInstanceId.LastIndexOf('\\') + 1);
-            deviceInstanceId = deviceInstanceId.Remove(deviceInstanceId.LastIndexOf('{'));
-            deviceInstanceId = deviceInstanceId.Replace('#', '\\');
-            if (deviceInstanceId.EndsWith("\\"))
-            {
-                deviceInstanceId = deviceInstanceId.Remove(deviceInstanceId.Length - 1);
-            }
-            return deviceInstanceId;
-        }
+        //private static string devicePathToInstanceId(string devicePath)
+        //{
+        //    string deviceInstanceId = devicePath;
+        //    deviceInstanceId = deviceInstanceId.Remove(0, deviceInstanceId.LastIndexOf('\\') + 1);
+        //    deviceInstanceId = deviceInstanceId.Remove(deviceInstanceId.LastIndexOf('{'));
+        //    deviceInstanceId = deviceInstanceId.Replace('#', '\\');
+        //    if (deviceInstanceId.EndsWith("\\"))
+        //    {
+        //        deviceInstanceId = deviceInstanceId.Remove(deviceInstanceId.Length - 1);
+        //    }
+        //    return deviceInstanceId;
+        //}
     }
 }
