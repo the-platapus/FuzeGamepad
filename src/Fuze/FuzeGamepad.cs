@@ -12,12 +12,17 @@ namespace Fuze
 {
     public class FuzeGamepad
     {
-        private byte[] Vibration = { 0x02, 0x00, 0x00 };
-        private Mutex rumble_mutex = new Mutex();
+        private struct RumbleState
+        {
+            public byte Big;
+            public byte Small;
+        }
+
+        private RumbleState _rumble;
+        private readonly object _rumbleLock = new object();
 
         public FuzeGamepad(HidDevice Device, ScpBus scpBus, int index)
         {
-            Device.WriteFeatureData(Vibration);
 
             Thread rThread = new Thread(() => rumble_thread(Device));
             // rThread.Priority = ThreadPriority.BelowNormal; 
@@ -31,26 +36,32 @@ namespace Fuze
         //TODO: 震动
         private void rumble_thread(HidDevice Device)
         {
-            byte[] local_vibration = { 0x02, 0x00, 0x00 };
+            byte lastBig = 0;
+            byte lastSmall = 0;
+
             while (true)
             {
-                rumble_mutex.WaitOne();
-                if (local_vibration[2] != Vibration[2] || Vibration[1] != local_vibration[1])
+                var r = _rumble;
+
+                if (r.Big != lastBig || r.Small != lastSmall)
                 {
-                    local_vibration[2] = Vibration[2];
-                    local_vibration[1] = Vibration[1];
-                    rumble_mutex.ReleaseMutex();
-                    Device.WriteFeatureData(local_vibration);
-                    //Console.WriteLine("Big Motor: {0}, Small Motor: {1}", Vibration[2], Vibration[1]);
+                    try
+                    {
+                        byte[] report = { 0x02, r.Small, r.Big };
+                        Device.WriteFeatureData(report);
+
+                        lastBig = r.Big;
+                        lastSmall = r.Small;
+                    }
+                    catch
+                    {
+                        // ignore device disconnects
+                    }
                 }
-                else
-                {
-                    rumble_mutex.ReleaseMutex();
-                }
-                Thread.Sleep(20);
+
+                Thread.Sleep(5);
             }
         }
-
         private void input_thread(HidDevice Device, ScpBus scpBus, int index)
         {
             scpBus.PlugIn(index);
@@ -167,44 +178,19 @@ namespace Fuze
                     }
                 }
 
-                if (data.Status == HidDeviceData.ReadStatus.WaitTimedOut || (!changed && ((last_changed + timeout) < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond))))
+                byte[] outputReport = new byte[8];
+                scpBus.Report(index, controller.GetReport(), outputReport);
+
+                if (outputReport != null && outputReport.Length >= 5)
                 {
-                    changed = true;
-                }
-
-                if (changed)
-                {
-                    //Console.WriteLine("changed");
-                    //Console.WriteLine((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond));
-                    byte[] outputReport = new byte[8];
-                    scpBus.Report(index, controller.GetReport(), outputReport);
-
-                    //TODO: 震动
-                    //if (outputReport[1] == 0x08)
-                    //{
-                    //    byte bigMotor = outputReport[3];
-                    //    byte smallMotor = outputReport[4];
-                    //    rumble_mutex.WaitOne();
-                    //    if (bigMotor != Vibration[2] || Vibration[1] != smallMotor)
-                    //    {
-                    //        Vibration[1] = smallMotor;
-                    //        Vibration[2] = bigMotor;
-                    //    }
-                    //    rumble_mutex.ReleaseMutex();
-                    //}
-
-                    /*
-                    //if (last_mi_button != 0)
-                    //{
-                    //    if ((last_mi_button + 100) < (DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond))
-                    //    {
-                    //        last_mi_button = 0;
-                    //        controller.Buttons ^= X360Buttons.Logo;
-                    //    }
-                    //}
-
-                    //last_changed = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                    */
+                    lock (_rumbleLock)
+                    {
+                        _rumble = new RumbleState
+                        {
+                            Small = outputReport[3],
+                            Big = outputReport[4]
+                        };
+                    }
                 }
 
             }
