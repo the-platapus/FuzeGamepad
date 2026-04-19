@@ -63,16 +63,16 @@ namespace Fuze
             // ============================
             // TRY OLD METHOD (USB FIRST)
             // ============================
-            var usbDevices = HidDevices.Enumerate(0x79, 0x181c).ToList();
+            var usbDevices = HidDevices.Enumerate();
 
             HidDevice Device = null;
 
-            if (usbDevices.Count > 0)
-            {
-                Device = usbDevices.First();
-                Log.WriteLine("USB controller auto-detected.");
-            }
-            else
+            //if (usbDevices.Count > 0)
+            //{
+            //Device = usbDevices.First();
+            //Log.WriteLine("USB controller auto-detected.");
+            //}
+            //else
             {
                 // ============================
                 // FALLBACK → MANUAL SELECTION
@@ -87,7 +87,7 @@ namespace Fuze
                     Log.WriteLine("\nNo valid input-capable HID devices found.", Log.LogType.error);
                     return;
                 }
-                Console.Write("\n=> No Fuze Game Controller found in USB Devices. Select controller if in Bluetooth mode, if not then restart the service.\n");
+                Console.Write("\n==> No Fuze Game Controller found in USB Devices. Select controller if in Bluetooth mode, if not then restart the service.\n");
 
                 for (int i = 0; i < candidates.Count; i++)
                 {
@@ -102,9 +102,12 @@ namespace Fuze
 
                     Console.WriteLine($"{i}: {name}");
                     //Console.WriteLine($"    Path: {d.DevicePath}");
-                }
+                    Console.WriteLine($"Input: {d.Capabilities.InputReportByteLength}");
+                    Console.WriteLine($"Output: {d.Capabilities.OutputReportByteLength}");
+                    Console.WriteLine($"Feature: {d.Capabilities.FeatureReportByteLength}");
+            }
 
-                int selected = -1;
+            int selected = -1;
 
                 while (true)
                 {
