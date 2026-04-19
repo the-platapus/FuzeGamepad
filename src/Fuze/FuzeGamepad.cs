@@ -67,13 +67,13 @@ namespace Fuze
             scpBus.PlugIn(index);
             X360Controller controller = new X360Controller();
             int timeout = 30;
-            long last_changed = 0;
+            //long last_changed = 0;
             //long last_mi_button = 0;
             while (true)
             {
                 HidDeviceData data = Device.Read(timeout);
                 var currentState = data.Data;
-                bool changed = false;
+                //bool changed = false;
 
                 string str = Program.ByteArrayToHexString(currentState);
                 if (!string.IsNullOrEmpty(str))
@@ -120,7 +120,7 @@ namespace Fuze
 
                     if (controller.Buttons != Buttons)
                     {
-                        changed = true;
+                        //changed = true;
                         controller.Buttons = Buttons;
                     }
 
@@ -130,7 +130,7 @@ namespace Fuze
 
                     if (LeftStickX != controller.LeftStickX)
                     {
-                        changed = true;
+                        //changed = true;
                         controller.LeftStickX = LeftStickX;
                     }
 
@@ -140,7 +140,7 @@ namespace Fuze
 
                     if (LeftStickY != controller.LeftStickY)
                     {
-                        changed = true;
+                        //changed = true;
                         controller.LeftStickY = LeftStickY;
                     }
 
@@ -150,7 +150,7 @@ namespace Fuze
 
                     if (RightStickX != controller.RightStickX)
                     {
-                        changed = true;
+                        //changed = true;
                         controller.RightStickX = RightStickX;
                     }
 
@@ -160,19 +160,19 @@ namespace Fuze
 
                     if (RightStickY != controller.RightStickY)
                     {
-                        changed = true;
+                        //changed = true;
                         controller.RightStickY = RightStickY;
                     }
 
                     if (controller.LeftTrigger != currentState[8])
                     {
-                        changed = true;
+                        //changed = true;
                         controller.LeftTrigger = currentState[8];
                     }
 
                     if (controller.RightTrigger != currentState[9])
                     {
-                        changed = true;
+                        //changed = true;
                         controller.RightTrigger = currentState[9];
 
                     }
