@@ -1,0 +1,5 @@
+# Fuze Tomahawk F1 controller: let the logged-in user open the raw HID node
+# (USB 0079:181c, Bluetooth 12d1:a560) for rumble research.
+KERNEL=="hidraw*", ATTRS{idVendor}=="0079", ATTRS{idProduct}=="181c", TAG+="uaccess"
+KERNEL=="hidraw*", KERNELS=="0005:12D1:A560.*", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0079", ATTRS{idProduct}=="181c", TAG+="uaccess"

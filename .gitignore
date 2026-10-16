@@ -1,3 +1,4 @@
 /src/.vs
 /src/obj
 /src/bin/Debug
+__pycache__/
