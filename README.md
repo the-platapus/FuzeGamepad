@@ -18,7 +18,7 @@ It uses SCP as a driver to emulate an Xbox 360 controller.
 
 # Rumble Research:
 
-The controller has 4 vibration motors, but neither its USB nor its Bluetooth HID descriptor declares a rumble report. Probing both firmwares found hidden Bluetooth reports (including a 1-byte output report `0x01`), but no command that moves the motors. The controller also never vibrates on its own. The next step is a hardware check of the motor driver circuit.
+The controller has 4 vibration motors, but neither its USB nor its Bluetooth HID descriptor declares a rumble report. Probing both firmwares found hidden Bluetooth reports (including a 1-byte output report `0x01`), but no command that moves the motors. The controller also never vibrates on its own. The board itself has all 4 motor driver circuits fitted, so the hardware is there; the firmware just never switches it on.
 
 Findings, test results and a Linux probe tool are in [tools/linux](tools/linux/README.md).
 
